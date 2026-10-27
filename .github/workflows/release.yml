@@ -1,0 +1,218 @@
+name: Release
+
+# Checks the SDL libraries for new release tags every day. When one has a new
+# tag, every target is built with the updated submodules; only if all builds
+# succeed are the updates committed to main, tagged dev-YYYY-MM[.N] and
+# published as a GitHub release.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Release even if no library has a new tag
+        type: boolean
+        default: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    outputs:
+      release: ${{ steps.check.outputs.release }}
+      version: ${{ steps.check.outputs.version }}
+      versions: ${{ steps.check.outputs.versions }}
+      changes: ${{ steps.check.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: bash .github/scripts/check-updates.sh
+        env:
+          FORCE: ${{ inputs.force || 'false' }}
+      - name: Summary
+        env:
+          RELEASE: ${{ steps.check.outputs.release }}
+          VERSION: ${{ steps.check.outputs.version }}
+          CHANGES: ${{ steps.check.outputs.changes }}
+        run: |
+          {
+            echo "### $VERSION: release=$RELEASE"
+            echo '```'
+            echo "${CHANGES:-no new tags}"
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+
+  build:
+    needs: check
+    if: needs.check.outputs.release == 'true'
+    name: ${{ matrix.platform.target }} (${{ matrix.flavour }})
+    runs-on: ${{ matrix.platform.os }}
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        flavour: [shared, static]
+        platform:
+          - { target: x86_64-linux-gnu, os: ubuntu-24.04, nasm: true }
+          - { target: aarch64-linux-gnu, os: ubuntu-24.04-arm }
+          - { target: x86_64-w64-mingw32, os: ubuntu-24.04, nasm: true, mingw: true, args: "-DTOOLCHAIN_FILE=SDL/build-scripts/cmake-toolchain-mingw64-x86_64.cmake" }
+          - { target: x86_64-windows-msvc, os: windows-2025, nasm: true, msvc: x64 }
+          - { target: aarch64-windows-msvc, os: windows-11-arm, msvc: arm64 }
+          - { target: aarch64-apple-darwin, os: macos-15, args: "-DOSX_DEPLOYMENT_TARGET=11.0" }
+          - { target: x86_64-apple-darwin, os: macos-15-intel, nasm: true, args: "-DOSX_DEPLOYMENT_TARGET=11.0" }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Configure git for Windows
+        if: runner.os == 'Windows'
+        run: |
+          git config --global core.longpaths true
+          git config --global core.autocrlf false
+
+      - uses: actions/checkout@v4
+
+      - name: Check out library sources
+        run: bash .github/scripts/apply-versions.sh
+        env:
+          VERSIONS: ${{ needs.check.outputs.versions }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Ninja
+        run: python -m pip install ninja
+
+      - uses: ilammy/setup-nasm@v1
+        if: matrix.platform.nasm
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: matrix.platform.msvc
+        with:
+          arch: ${{ matrix.platform.msvc }}
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux' && !matrix.platform.mingw
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential pkg-config libasound2-dev libpulse-dev libaudio-dev \
+            libfribidi-dev libjack-dev libsndio-dev libx11-dev libxext-dev \
+            libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev \
+            libxtst-dev libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev \
+            libgles2-mesa-dev libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev \
+            libudev-dev libthai-dev libusb-1.0-0-dev libpipewire-0.3-dev \
+            libwayland-dev libdecor-0-dev liburing-dev
+
+      - name: Install MinGW-w64
+        if: matrix.platform.mingw
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64
+          # DirectXShaderCompiler needs std::thread, which only the posix
+          # thread model provides.
+          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
+
+      # One cache per target, shared by both flavours. Paths are made relative
+      # to the workspace, so the shared and static build directories produce
+      # the same cache entries; most of the cache is DirectXShaderCompiler,
+      # which is built the same way in both. Only the shared job saves, which
+      # keeps the total within the 10 GB repository limit.
+      - uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ matrix.platform.target }}
+          max-size: 1200M
+          save: ${{ matrix.flavour == 'shared' }}
+          evict-old-files: job
+
+      - name: Build and package
+        env:
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+          CCACHE_BASEDIR: ${{ github.workspace }}
+          CCACHE_NOHASHDIR: "true"
+        run: >
+          cmake
+          -DTARGET=${{ matrix.platform.target }}
+          -DFLAVOUR=${{ matrix.flavour }}
+          -DGENERATOR=Ninja
+          -DVERSION=${{ needs.check.outputs.version }}
+          ${{ matrix.platform.args }}
+          -P scripts/package.cmake
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform.target }}-${{ matrix.flavour }}
+          path: |
+            build/*.tar.gz
+            build/*.zip
+          if-no-files-found: error
+          compression-level: 0
+
+  release:
+    needs: [check, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+      VERSIONS: ${{ needs.check.outputs.versions }}
+      CHANGES: ${{ needs.check.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Commit submodule updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          bash .github/scripts/apply-versions.sh --commit
+          git tag "$VERSION"
+
+      - name: Create source archive
+        run: cmake -DVERSION="$VERSION" -P scripts/source-archive.cmake
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Write release notes
+        run: |
+          {
+            echo "Unofficial builds of SDL3 and its satellite libraries."
+            echo "See [THIRD_PARTY_NOTICES.md](https://github.com/${{ github.repository }}/blob/$VERSION/THIRD_PARTY_NOTICES.md) for licenses."
+            echo
+            echo "| Library | Version |"
+            echo "|---|---|"
+            while read -r path sha label; do
+              [ -n "$path" ] || continue
+              echo "| $path | [\`$label\`]($(git config -f .gitmodules "submodule.$path.url" | sed 's/\.git$//')/tree/$sha) |"
+            done <<<"$VERSIONS"
+            if [ -n "$(tr -d '[:space:]' <<<"$CHANGES")" ]; then
+              echo
+              echo "### Updated"
+              echo
+              while read -r path old new; do
+                [ -n "$path" ] || continue
+                echo "- $path: \`$old\` → \`$new\`"
+              done <<<"$CHANGES"
+            fi
+          } >notes.md
+          cat notes.md
+
+      - name: Push and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git push --atomic origin HEAD:main "refs/tags/$VERSION"
+          gh release create "$VERSION" dist/* build/sdl3-prebuilt-*-src.tar.gz \
+            --title "$VERSION" --notes-file notes.md --verify-tag
