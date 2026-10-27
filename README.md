@@ -3,14 +3,16 @@
 Prebuilt binaries of [SDL3](https://libsdl.org) and its satellite libraries,
 published as [GitHub releases](../../releases).
 
-| Library                                                          | Pinned version           |
-| ---------------------------------------------------------------- | ------------------------ |
-| [SDL](https://github.com/libsdl-org/SDL)                         | `release-3.4.18`         |
-| [SDL_image](https://github.com/libsdl-org/SDL_image)             | `release-3.4.8`          |
-| [SDL_mixer](https://github.com/libsdl-org/SDL_mixer)             | `release-3.2.4`          |
-| [SDL_ttf](https://github.com/libsdl-org/SDL_ttf)                 | `release-3.2.2`          |
-| [SDL_net](https://github.com/libsdl-org/SDL_net)                 | `release-3.2.0`          |
-| [SDL_shadercross](https://github.com/libsdl-org/SDL_shadercross) | `main` (no releases yet) |
+- [SDL](https://github.com/libsdl-org/SDL)
+- [SDL_image](https://github.com/libsdl-org/SDL_image)
+- [SDL_mixer](https://github.com/libsdl-org/SDL_mixer)
+- [SDL_ttf](https://github.com/libsdl-org/SDL_ttf)
+- [SDL_net](https://github.com/libsdl-org/SDL_net)
+- [SDL_shadercross](https://github.com/libsdl-org/SDL_shadercross)
+
+The libraries are always built from their latest `release-3.*` tag, except
+SDL_shadercross, which has no releases yet and is built from `main`. The notes
+of each release list the exact versions.
 
 > [!NOTE]
 > These are **unofficial** builds. This project is not affiliated with or
@@ -98,16 +100,23 @@ See the header of [`scripts/package.cmake`](scripts/package.cmake) for all
 options. Building SDL_shadercross compiles DirectXShaderCompiler, which takes
 much longer than all other libraries combined.
 
-## Updating a library
+## Releases
 
-```sh
-git -C SDL fetch --depth 1 origin tag release-3.x.y
-git -C SDL checkout release-3.x.y
-git submodule update --init --recursive --depth 1 SDL
-git add SDL
-```
+The [Release workflow](.github/workflows/release.yml) checks the libraries for
+new `release-3.*` tags every day. When one has a new tag, it:
 
-Update the version table above in the same commit.
+1. builds every target and flavour with the updated submodules;
+2. if all builds succeed, commits each update to `main` as
+   `feat(<library>): update to <tag>`, moving SDL_shadercross to the latest
+   `main` in the same release;
+3. tags the commit and publishes a GitHub release with all archives and the
+   source archive.
+
+Release tags have the form `dev-YYYY-MM`, followed by `dev-YYYY-MM.1`,
+`dev-YYYY-MM.2`, and so on for further releases in the same month.
+
+To release without a new upstream tag, for example after changing the build
+configuration, run the workflow manually with **force** enabled.
 
 ## License
 
