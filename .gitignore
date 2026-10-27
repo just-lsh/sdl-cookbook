@@ -1,1 +1,22 @@
-build/
+# Build output
+/build/
+/out/
+/cmake-build-*/
+CMakeUserPresets.json
+compile_commands.json
+
+# Tool caches (clangd, neocmakelsp, ...)
+.cache/
+
+# Editors and IDEs
+.vscode/
+.idea/
+.vs/
+.zed/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
