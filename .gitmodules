@@ -6,3 +6,7 @@
 	path = SDL_image
 	url = https://github.com/libsdl-org/SDL_image.git
 	shallow = true
+[submodule "SDL_mixer"]
+	path = SDL_mixer
+	url = https://github.com/libsdl-org/SDL_mixer.git
+	shallow = true
