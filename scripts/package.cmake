@@ -24,6 +24,8 @@
 #   CONFIGURE_ARGS         Extra arguments for every configure step (a list).
 #   BUILD_DIR              Work directory (default: <repo>/build).
 #   PARALLEL               Parallel build jobs (default: number of logical cores).
+#   VERSION                Version recorded in VERSIONS.txt
+#                          (default: git describe of this repository).
 #
 # Result: <BUILD_DIR>/sdl3-prebuilt-<TARGET>-<FLAVOUR>.{tar.gz,zip}
 
@@ -135,13 +137,15 @@ endforeach()
 file(COPY "${repo_dir}/THIRD_PARTY_NOTICES.md" DESTINATION "${prefix}")
 
 # Record the exact sources this archive was built from.
-execute_process(
-    COMMAND git describe --tags --always --dirty
-    WORKING_DIRECTORY "${repo_dir}"
-    OUTPUT_VARIABLE repo_version
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND_ERROR_IS_FATAL ANY
-)
+if(NOT VERSION)
+    execute_process(
+        COMMAND git describe --tags --always --dirty
+        WORKING_DIRECTORY "${repo_dir}"
+        OUTPUT_VARIABLE VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY
+    )
+endif()
 execute_process(
     COMMAND git submodule status
     WORKING_DIRECTORY "${repo_dir}"
@@ -149,7 +153,7 @@ execute_process(
     COMMAND_ERROR_IS_FATAL ANY
 )
 file(WRITE "${prefix}/VERSIONS.txt"
-    "sdl3-prebuilt ${repo_version}\n"
+    "sdl3-prebuilt ${VERSION}\n"
     "target: ${TARGET}\n"
     "flavour: ${FLAVOUR}\n"
     "\n"

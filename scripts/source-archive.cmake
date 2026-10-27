@@ -7,9 +7,10 @@
 #
 # Optional:
 #   BUILD_DIR  Output directory (default: <repo>/build).
+#   VERSION    Version in the archive name (default: git describe of this repository).
 #
-# Result: <BUILD_DIR>/sdl3-prebuilt-<version>-src.tar.gz, with every file under
-# a top-level sdl3-prebuilt-<version>-src/ directory.
+# Result: <BUILD_DIR>/sdl3-prebuilt-<VERSION>-src.tar.gz, with every file under
+# a top-level sdl3-prebuilt-<VERSION>-src/ directory.
 
 cmake_minimum_required(VERSION 3.19)
 
@@ -19,13 +20,15 @@ if(NOT BUILD_DIR)
 endif()
 get_filename_component(BUILD_DIR "${BUILD_DIR}" ABSOLUTE BASE_DIR "${repo_dir}")
 
-execute_process(
-    COMMAND git describe --tags --always --dirty
-    WORKING_DIRECTORY "${repo_dir}"
-    OUTPUT_VARIABLE version
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND_ERROR_IS_FATAL ANY
-)
+if(NOT VERSION)
+    execute_process(
+        COMMAND git describe --tags --always --dirty
+        WORKING_DIRECTORY "${repo_dir}"
+        OUTPUT_VARIABLE VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY
+    )
+endif()
 execute_process(
     COMMAND git ls-files --recurse-submodules
     WORKING_DIRECTORY "${repo_dir}"
@@ -33,7 +36,7 @@ execute_process(
     COMMAND_ERROR_IS_FATAL ANY
 )
 
-set(package_name "sdl3-prebuilt-${version}-src")
+set(package_name "sdl3-prebuilt-${VERSION}-src")
 set(stage_dir "${BUILD_DIR}/source-archive")
 set(archive "${BUILD_DIR}/${package_name}.tar.gz")
 
