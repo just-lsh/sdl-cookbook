@@ -1,130 +1,78 @@
-# sdl3-prebuilt
+# sdl-cookbook
 
-Prebuilt binaries of [SDL3](https://libsdl.org) and its satellite libraries,
-published as [GitHub releases](../../releases).
-
-- [SDL](https://github.com/libsdl-org/SDL)
-- [SDL_image](https://github.com/libsdl-org/SDL_image)
-- [SDL_mixer](https://github.com/libsdl-org/SDL_mixer)
-- [SDL_ttf](https://github.com/libsdl-org/SDL_ttf)
-- [SDL_net](https://github.com/libsdl-org/SDL_net)
-- [SDL_shadercross](https://github.com/libsdl-org/SDL_shadercross)
-
-The libraries are always built from their latest `release-3.*` tag, except
-SDL_shadercross, which has no releases yet and is built from `main`. The notes
-of each release list the exact versions.
+CMake recipes for building [SDL3](https://libsdl.org) from source. You pick a
+preset, and CMake fetches SDL, builds it, installs it into `out/<preset>/` and
+checks that the install is usable.
 
 > [!NOTE]
-> These are **unofficial** builds. This project is not affiliated with or
-> endorsed by the SDL project. The libraries are built from unmodified upstream
-> sources; all credit goes to Sam Lantinga and the SDL contributors, and to the
-> authors of the bundled third-party libraries. Please report bugs in the
-> libraries themselves upstream, and only packaging problems here.
+> This project is not affiliated with or endorsed by the SDL project. Please
+> report bugs in SDL itself upstream.
 
-## Build flavours
+## Requirements
 
-Each release provides two flavours, configured by the CMake initial-cache files
-in [`cmake/`](cmake):
+- CMake 3.25+
+- Ninja
+- A C compiler
+- SDL's [platform build dependencies](https://wiki.libsdl.org/SDL3/README-linux#build-dependencies)
 
-- **shared** ([`cmake/shared.cmake`](cmake/shared.cmake)): shared libraries.
-  Third-party dependencies are separate shared libraries that the SDL libraries
-  load at runtime.
-- **static** ([`cmake/static.cmake`](cmake/static.cmake)): static libraries.
-  SDL3_mixer is built without libgme and mpg123 because they are LGPL-licensed.
-  MP3 playback still works through the built-in dr_mp3 decoder; only the GME
-  chiptune formats (NSF, SPC, VGM, ...) are unavailable.
-
-All third-party dependencies are built from the sources vendored by the SDL
-libraries; no system packages are bundled.
-
-## Release archives
-
-Every release has one archive per target and flavour, named
-`sdl3-prebuilt-<target>-<flavour>`, for example
-`sdl3-prebuilt-x86_64-linux-gnu-shared.tar.gz`. Windows targets use `.zip`.
-
-| Target | Toolchain |
-|---|---|
-| `x86_64-linux-gnu`, `aarch64-linux-gnu` | GCC |
-| `x86_64-windows-msvc`, `aarch64-windows-msvc` | MSVC |
-| `x86_64-w64-mingw32` | MinGW-w64 |
-| `aarch64-apple-darwin`, `x86_64-apple-darwin` | Apple Clang |
-
-Each archive contains all libraries in the standard CMake install layout, so
-`find_package(SDL3 ...)` and pkg-config work after pointing
-`CMAKE_PREFIX_PATH` / `PKG_CONFIG_PATH` at the extracted directory:
-
-```text
-sdl3-prebuilt-x86_64-linux-gnu-shared/
-├── bin/                    # DLLs (Windows) and the shadercross CLI
-├── include/SDL3*/
-├── lib/                    # .so / .dylib / .a / import .lib
-│   ├── cmake/
-│   └── pkgconfig/
-├── share/licenses/         # license of every bundled library
-├── THIRD_PARTY_NOTICES.md
-└── VERSIONS.txt            # exact upstream commits
-```
-
-A source archive, `sdl3-prebuilt-<version>-src.tar.gz`, with every submodule
-included, is attached to every release.
-
-## Building locally
-
-Requirements: CMake 3.21+, a C/C++ compiler, `nasm` (for dav1d and aom), and on
-Linux the [SDL build dependencies](https://wiki.libsdl.org/SDL3/README-linux#build-dependencies).
+On NixOS, [`shell.nix`](shell.nix) provides all of these:
 
 ```sh
-git clone --recursive --shallow-submodules https://github.com/just-lsh/sdl3-prebuilt.git
-cd sdl3-prebuilt
-
-cmake -DTARGET=x86_64-linux-gnu -DFLAVOUR=shared -P scripts/package.cmake
-cmake -P scripts/source-archive.cmake
+nix-shell
 ```
 
-Both scripts write to `build/`. Other targets pass toolchain settings through
-the script, for example:
+## Usage
 
 ```sh
-# Windows arm64 (Visual Studio)
-cmake -DTARGET=aarch64-windows-msvc -DFLAVOUR=shared -DPLATFORM=ARM64 -P scripts/package.cmake
-# MinGW, cross-compiled from Linux
-cmake -DTARGET=x86_64-w64-mingw32 -DFLAVOUR=shared \
-  -DTOOLCHAIN_FILE=SDL/build-scripts/cmake-toolchain-mingw64-x86_64.cmake -P scripts/package.cmake
-# macOS, on an Apple Silicon and an Intel machine respectively
-cmake -DTARGET=aarch64-apple-darwin -DFLAVOUR=shared -DOSX_DEPLOYMENT_TARGET=11.0 -P scripts/package.cmake
-cmake -DTARGET=x86_64-apple-darwin -DFLAVOUR=shared -DOSX_DEPLOYMENT_TARGET=11.0 -P scripts/package.cmake
+cmake --workflow --preset x64-linux-gcc-release
 ```
 
-See the header of [`scripts/package.cmake`](scripts/package.cmake) for all
-options. Building SDL_shadercross compiles DirectXShaderCompiler, which takes
-much longer than all other libraries combined.
+The workflow runs three steps, each also available as its own preset:
 
-## Releases
+1. `cmake --preset <name>` configures `build/<name>/` and fetches SDL.
+2. `cmake --build --preset <name>` builds SDL and installs it into `out/<name>/`.
+3. `ctest --preset <name>` builds [`tests/consumer`](tests/consumer) against
+   the install and runs it.
 
-The [Release workflow](.github/workflows/release.yml) checks the libraries for
-new `release-3.*` tags every day. When one has a new tag, it:
+To use the result from another CMake project, point `CMAKE_PREFIX_PATH` at
+`out/<name>/` and call `find_package(SDL3)`.
 
-1. builds every target and flavour with the updated submodules;
-2. if all builds succeed, commits each update to `main` as
-   `feat(<library>): update to <tag>`, moving SDL_shadercross to the latest
-   `main` in the same release;
-3. tags the commit and publishes a GitHub release with all archives and the
-   source archive.
+## Presets
 
-Release tags have the form `dev-YYYY-MM`, followed by `dev-YYYY-MM.1`,
-`dev-YYYY-MM.2`, and so on for further releases in the same month.
+Preset names follow `<host>-<compiler>-<build type>`.
 
-To release without a new upstream tag, for example after changing the build
-configuration, run the workflow manually with **force** enabled.
+| Preset | Host | Compiler | Generator |
+|---|---|---|---|
+| `x64-linux-gcc-debug` | Linux x86_64 | GCC | Ninja |
+| `x64-linux-gcc-release` | Linux x86_64 | GCC | Ninja |
+
+[`CMakePresets.json`](CMakePresets.json) only includes the files in
+[`cmake/presets/platform/`](cmake/presets/platform). Each platform file
+combines small hidden presets from the other directories:
+
+| Directory | Hidden presets | Sets |
+|---|---|---|
+| `config/` | `config-layout`, `config-ninja`, `config-debug`, `config-release` | build and install directories, generator, build type |
+| `compiler/` | `compiler-gcc` | C and C++ compilers |
+| `host/` | `host-x64-linux` | the host where the preset is available |
+
+## SDL version
+
+[`cmake/SDL3.cmake`](cmake/SDL3.cmake) fetches SDL with `FetchContent`. By
+default it builds the `release-3.4.18` tag. To build a different tag or commit,
+set `COOKBOOK_SDL_GIT_TAG`:
+
+```sh
+cmake --preset x64-linux-gcc-release -DCOOKBOOK_SDL_GIT_TAG=release-3.4.16
+```
+
+To build a local SDL checkout instead, set
+`FETCHCONTENT_SOURCE_DIR_SDL3=/path/to/SDL`.
+
+SDL's own options (`SDL_SHARED`, `SDL_STATIC`, `SDL_WAYLAND`, ...) can be
+passed the same way.
 
 ## License
 
-The build scripts and configuration in this repository are licensed under the
-[MIT License](LICENSE).
-
-The SDL libraries are licensed under the zlib license. The libraries bundled in
-the release archives carry their own licenses, including LGPL-2.1 for libgme
-and mpg123 in the shared flavour. See
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the full list and the
-required attributions.
+The recipes in this repository are licensed under the [MIT License](LICENSE).
+SDL itself is licensed under the zlib license.

@@ -1,0 +1,14 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "host-x64-linux",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    }
+  ]
+}
