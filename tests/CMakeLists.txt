@@ -29,3 +29,14 @@ endif()
 if(COOKBOOK_SDL_NET)
     cookbook_add_consumer_test(SDL3_net)
 endif()
+if(COOKBOOK_SDL_SHADERCROSS)
+    cookbook_add_consumer_test(SDL3_shadercross)
+
+    # The installed command line tool must find its libraries in lib/.
+    add_test(NAME shadercross-cli
+        COMMAND "${CMAKE_INSTALL_PREFIX}/bin/shadercross"
+            "${CMAKE_CURRENT_SOURCE_DIR}/SDL3_shadercross/compute.hlsl"
+            --source HLSL --dest MSL --stage compute
+            --output "${CMAKE_CURRENT_BINARY_DIR}/compute.msl"
+    )
+endif()

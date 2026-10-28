@@ -3,6 +3,7 @@
 #     GIT_TAG <tag-or-commit>
 #     [SOURCE_DIR <dir>]
 #     [SUBMODULES]
+#     [PROGRAMS]
 #     [DEPENDS <library>...]
 #     [CMAKE_CACHE_ARGS -D<var>:<type>=<value>...]
 # )
@@ -14,6 +15,8 @@
 #
 # SOURCE_DIR builds an existing checkout instead of cloning GIT_REPOSITORY.
 # SUBMODULES also fetches the git submodules (the vendored dependencies).
+# PROGRAMS marks a library that installs programs into bin/: they get
+# COOKBOOK_PROGRAM_RPATH on top of CMAKE_INSTALL_RPATH to find lib/.
 
 include(ExternalProject)
 find_package(Git REQUIRED)
@@ -32,7 +35,7 @@ set(_cookbook_forwarded_variables
 
 function(cookbook_add_library name)
     cmake_parse_arguments(PARSE_ARGV 1 arg
-        "SUBMODULES"
+        "SUBMODULES;PROGRAMS"
         "GIT_REPOSITORY;GIT_TAG;SOURCE_DIR"
         "DEPENDS;CMAKE_CACHE_ARGS"
     )
@@ -40,10 +43,16 @@ function(cookbook_add_library name)
     if(arg_SOURCE_DIR)
         set(source_args SOURCE_DIR "${arg_SOURCE_DIR}")
     else()
+        # A shallow clone only works for branch and tag names, not commits.
+        if(arg_GIT_TAG MATCHES "^[0-9a-fA-F]+$")
+            set(shallow OFF)
+        else()
+            set(shallow ON)
+        endif()
         set(source_args
             GIT_REPOSITORY "${arg_GIT_REPOSITORY}"
             GIT_TAG "${arg_GIT_TAG}"
-            GIT_SHALLOW ON
+            GIT_SHALLOW ${shallow}
             GIT_PROGRESS ON
         )
         if(arg_SUBMODULES)
@@ -59,9 +68,15 @@ function(cookbook_add_library name)
         "-DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_INSTALL_PREFIX}"
         "-DCMAKE_PREFIX_PATH:PATH=${CMAKE_INSTALL_PREFIX}"
     )
+    # Function scope: this only changes the RPATH of this library.
+    if(arg_PROGRAMS)
+        list(APPEND CMAKE_INSTALL_RPATH ${COOKBOOK_PROGRAM_RPATH})
+    endif()
     foreach(var IN LISTS _cookbook_forwarded_variables)
         if(DEFINED ${var})
-            list(APPEND cache_args "-D${var}:STRING=${${var}}")
+            # Lists travel with LIST_SEPARATOR, so they stay one argument.
+            string(REPLACE ";" "|" value "${${var}}")
+            list(APPEND cache_args "-D${var}:STRING=${value}")
         endif()
     endforeach()
 
@@ -71,6 +86,7 @@ function(cookbook_add_library name)
         # Submodules, if any, come from the patch step above.
         GIT_SUBMODULES ""
         DEPENDS ${arg_DEPENDS}
+        LIST_SEPARATOR "|"
         CMAKE_CACHE_ARGS ${cache_args} ${arg_CMAKE_CACHE_ARGS}
         # Keep the console readable: each step logs to
         # <build>/<name>/src/<name>-stamp/ and prints its log only on failure.

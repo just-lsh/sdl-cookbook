@@ -18,10 +18,11 @@ install is usable.
 | [SDL_mixer](https://github.com/libsdl-org/SDL_mixer) | `release-3.2.4` | [`cmake/SDL3_mixer.cmake`](cmake/SDL3_mixer.cmake) |
 | [SDL_ttf](https://github.com/libsdl-org/SDL_ttf) | `release-3.2.2` | [`cmake/SDL3_ttf.cmake`](cmake/SDL3_ttf.cmake) |
 | [SDL_net](https://github.com/libsdl-org/SDL_net) | `release-3.2.0` | [`cmake/SDL3_net.cmake`](cmake/SDL3_net.cmake) |
+| [SDL_shadercross](https://github.com/libsdl-org/SDL_shadercross) | `1ff05be` (no releases yet) | [`cmake/SDL3_shadercross.cmake`](cmake/SDL3_shadercross.cmake) |
 
 The satellite libraries build their third-party dependencies (image and audio
-codecs, FreeType, HarfBuzz, ...) from the sources they vendor as git
-submodules. Codecs are installed as shared libraries next to the SDL library
+codecs, FreeType, HarfBuzz, SPIRV-Cross, DirectXShaderCompiler, ...) from the
+sources they vendor as git submodules. Codecs are installed as shared libraries next to the SDL library
 that loads them.
 
 ## Requirements
@@ -52,21 +53,22 @@ The workflow runs three steps, each also available as its own preset:
 3. `ctest --preset <name>` builds a small program per library from
    [`tests/`](tests) against the install and runs it. The programs check that
    the codecs load, for example by encoding and decoding a PNG, JPEG, WebP and
-   AVIF image with SDL_image.
+   AVIF image with SDL_image, or compiling an HLSL shader with SDL_shadercross.
 
 The result has one directory per preset:
 
 ```text
 out/x64-linux-gcc-release/
-├── include/   # SDL3/, SDL3_image/, SDL3_mixer/, SDL3_ttf/, SDL3_net/
+├── bin/       # shadercross
+├── include/   # SDL3/, SDL3_image/, SDL3_mixer/, SDL3_ttf/, SDL3_net/, SDL3_shadercross/
 ├── lib/       # libSDL3.so, libSDL3_image.so, ..., and the codec libraries
 │   ├── cmake/
 │   └── pkgconfig/
 └── share/     # licenses/<library>/
 ```
 
-The libraries find each other relative to their own location, so the
-directory can be moved. To use it from another CMake project, point
+The libraries find each other relative to their own location, and programs in
+`bin/` find them in `lib/`, so the directory can be moved. To use it from another CMake project, point
 `CMAKE_PREFIX_PATH` at it and find SDL before the satellite libraries:
 
 ```cmake
@@ -120,12 +122,18 @@ cmake --preset x64-linux-gcc-release -DCOOKBOOK_SDL_GIT_TAG=release-3.4.16 -DCOO
 
 | Option | Default | Effect |
 |---|---|---|
-| `COOKBOOK_SDL_IMAGE`, `COOKBOOK_SDL_MIXER`, `COOKBOOK_SDL_TTF`, `COOKBOOK_SDL_NET` | `ON` | build that satellite library |
+| `COOKBOOK_SDL_IMAGE`, `COOKBOOK_SDL_MIXER`, `COOKBOOK_SDL_TTF`, `COOKBOOK_SDL_NET`, `COOKBOOK_SDL_SHADERCROSS` | `ON` | build that satellite library |
 | `COOKBOOK_<LIB>_GIT_TAG` | see [Libraries](#libraries) | tag or commit to build, e.g. `COOKBOOK_SDL_IMAGE_GIT_TAG` |
 | `COOKBOOK_<LIB>_SOURCE_DIR` | empty | build a local checkout instead of fetching, e.g. `COOKBOOK_SDL_SOURCE_DIR=/path/to/SDL` |
 | `COOKBOOK_TESTS` | `ON` | add the consumer tests |
 
-`<LIB>` is `SDL`, `SDL_IMAGE`, `SDL_MIXER`, `SDL_TTF` or `SDL_NET`.
+`<LIB>` is `SDL`, `SDL_IMAGE`, `SDL_MIXER`, `SDL_TTF`, `SDL_NET` or
+`SDL_SHADERCROSS`.
+
+SDL_shadercross builds DirectXShaderCompiler, a fork of LLVM, which takes
+longer than all other libraries together and makes up most of the install
+size (about 1.2 GB for a debug build, 75 MB for release). Turn it off with
+`-DCOOKBOOK_SDL_SHADERCROSS=OFF` if you don't need it.
 
 The libraries' own options (`SDL_WAYLAND`, `SDLIMAGE_AVIF`, ...) are set in
 `CMAKE_CACHE_ARGS` of their recipe, since each library is a separate CMake

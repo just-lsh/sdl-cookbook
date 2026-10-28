@@ -9,6 +9,9 @@ cookbook_add_library(SDL3
     GIT_TAG ${COOKBOOK_SDL_GIT_TAG}
     SOURCE_DIR "${COOKBOOK_SDL_SOURCE_DIR}"
     CMAKE_CACHE_ARGS
+        # SDL_TESTS only drops the test programs; the SDL3_test library has
+        # its own switch.
+        -DSDL_TEST_LIBRARY:BOOL=OFF
         -DSDL_TESTS:BOOL=OFF
         -DSDL_EXAMPLES:BOOL=OFF
         # Package config files without absolute paths, so the install can be moved.
