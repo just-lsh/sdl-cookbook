@@ -1,0 +1,17 @@
+#:schema https://cmakefmt.dev/schemas/latest/schema.json
+# cmakefmt defaults, except for the line width, plus the shape of the
+# cookbook's own commands so their keywords are grouped with their values.
+
+[format]
+line_width = 100
+
+[commands.cookbook_add_library]
+pargs = 1
+flags = ["SUBMODULES", "PROGRAMS"]
+
+[commands.cookbook_add_library.kwargs]
+GIT_REPOSITORY = { nargs = 1 }
+GIT_TAG = { nargs = 1 }
+SOURCE_DIR = { nargs = 1 }
+DEPENDS = { nargs = "+" }
+CMAKE_CACHE_ARGS = { nargs = "+" }

@@ -139,6 +139,21 @@ The libraries' own options (`SDL_WAYLAND`, `SDLIMAGE_AVIF`, ...) are set in
 `CMAKE_CACHE_ARGS` of their recipe, since each library is a separate CMake
 project.
 
+## Formatting
+
+The CMake files are formatted with [cmakefmt](https://cmakefmt.dev), using its
+defaults with a line width of 100, plus the shape of `cookbook_add_library`,
+in [`.cmakefmt.toml`](.cmakefmt.toml):
+
+```sh
+cmake -P cmake/Format.cmake             # format in place
+cmake -DCHECK=ON -P cmake/Format.cmake  # only report files that would change
+```
+
+[`cmake/Format.cmake`](cmake/Format.cmake) downloads the pinned cmakefmt
+release for your platform into `.cache/cmakefmt/` on first use and verifies
+its checksum, so nothing else needs to be installed.
+
 ## License
 
 The recipes in this repository are licensed under the [MIT License](LICENSE).
