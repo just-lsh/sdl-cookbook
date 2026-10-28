@@ -1,18 +1,35 @@
 # sdl-cookbook
 
-CMake recipes for building [SDL3](https://libsdl.org) from source. You pick a
-preset, and CMake fetches SDL, builds it, installs it into `out/<preset>/` and
-checks that the install is usable.
+CMake recipes for building [SDL3](https://libsdl.org) and its satellite
+libraries from source. You pick a preset, and CMake fetches the libraries,
+builds them, installs them together into `out/<preset>/` and checks that the
+install is usable.
 
 > [!NOTE]
 > This project is not affiliated with or endorsed by the SDL project. Please
-> report bugs in SDL itself upstream.
+> report bugs in the libraries themselves upstream.
+
+## Libraries
+
+| Library | Default version | Recipe |
+|---|---|---|
+| [SDL](https://github.com/libsdl-org/SDL) | `release-3.4.18` | [`cmake/SDL3.cmake`](cmake/SDL3.cmake) |
+| [SDL_image](https://github.com/libsdl-org/SDL_image) | `release-3.4.8` | [`cmake/SDL3_image.cmake`](cmake/SDL3_image.cmake) |
+| [SDL_mixer](https://github.com/libsdl-org/SDL_mixer) | `release-3.2.4` | [`cmake/SDL3_mixer.cmake`](cmake/SDL3_mixer.cmake) |
+| [SDL_ttf](https://github.com/libsdl-org/SDL_ttf) | `release-3.2.2` | [`cmake/SDL3_ttf.cmake`](cmake/SDL3_ttf.cmake) |
+| [SDL_net](https://github.com/libsdl-org/SDL_net) | `release-3.2.0` | [`cmake/SDL3_net.cmake`](cmake/SDL3_net.cmake) |
+
+The satellite libraries build their third-party dependencies (image and audio
+codecs, FreeType, HarfBuzz, ...) from the sources they vendor as git
+submodules. Codecs are installed as shared libraries next to the SDL library
+that loads them.
 
 ## Requirements
 
 - CMake 3.25+
 - Ninja
-- A C compiler
+- A C and C++ compiler
+- `nasm`, for the AV1 codecs of SDL_image
 - SDL's [platform build dependencies](https://wiki.libsdl.org/SDL3/README-linux#build-dependencies)
 
 On NixOS, [`shell.nix`](shell.nix) provides all of these:
@@ -29,13 +46,47 @@ cmake --workflow --preset x64-linux-gcc-release
 
 The workflow runs three steps, each also available as its own preset:
 
-1. `cmake --preset <name>` configures `build/<name>/` and fetches SDL.
-2. `cmake --build --preset <name>` builds SDL and installs it into `out/<name>/`.
-3. `ctest --preset <name>` builds [`tests/consumer`](tests/consumer) against
-   the install and runs it.
+1. `cmake --preset <name>` configures `build/<name>/`.
+2. `cmake --build --preset <name>` fetches, builds and installs every library
+   into `out/<name>/`.
+3. `ctest --preset <name>` builds a small program per library from
+   [`tests/`](tests) against the install and runs it. The programs check that
+   the codecs load, for example by encoding and decoding a PNG, JPEG, WebP and
+   AVIF image with SDL_image.
 
-To use the result from another CMake project, point `CMAKE_PREFIX_PATH` at
-`out/<name>/` and call `find_package(SDL3)`.
+The result has one directory per preset:
+
+```text
+out/x64-linux-gcc-release/
+├── include/   # SDL3/, SDL3_image/, SDL3_mixer/, SDL3_ttf/, SDL3_net/
+├── lib/       # libSDL3.so, libSDL3_image.so, ..., and the codec libraries
+│   ├── cmake/
+│   └── pkgconfig/
+└── share/     # licenses/<library>/
+```
+
+The libraries find each other relative to their own location, so the
+directory can be moved. To use it from another CMake project, point
+`CMAKE_PREFIX_PATH` at it and find SDL before the satellite libraries:
+
+```cmake
+find_package(SDL3 REQUIRED)
+find_package(SDL3_image REQUIRED)
+target_link_libraries(app PRIVATE SDL3_image::SDL3_image SDL3::SDL3)
+```
+
+## How it works
+
+The top-level [`CMakeLists.txt`](CMakeLists.txt) is a superbuild: it compiles
+nothing itself. [`cmake/Cookbook.cmake`](cmake/Cookbook.cmake) adds each library
+with `ExternalProject` as its own top-level project, the way upstream builds
+it, with its own build tree in `build/<preset>/<library>/`. SDL is installed
+first, and each satellite library then finds it in the install directory with
+`find_package(SDL3)`. The libraries share nothing but that directory.
+
+Each step writes its output to a log file in
+`build/<preset>/<library>/src/<library>-stamp/` and prints it only if the step
+fails.
 
 ## Presets
 
@@ -56,23 +107,34 @@ combines small hidden presets from the other directories:
 | `compiler/` | `compiler-gcc` | C and C++ compilers |
 | `host/` | `host-x64-linux` | the host where the preset is available |
 
-## SDL version
+The build type, compilers, toolchain file, library directory and RPATH are
+passed on to every library.
 
-[`cmake/SDL3.cmake`](cmake/SDL3.cmake) fetches SDL with `FetchContent`. By
-default it builds the `release-3.4.18` tag. To build a different tag or commit,
-set `COOKBOOK_SDL_GIT_TAG`:
+## Options
+
+Set these when configuring, for example:
 
 ```sh
-cmake --preset x64-linux-gcc-release -DCOOKBOOK_SDL_GIT_TAG=release-3.4.16
+cmake --preset x64-linux-gcc-release -DCOOKBOOK_SDL_GIT_TAG=release-3.4.16 -DCOOKBOOK_SDL_NET=OFF
 ```
 
-To build a local SDL checkout instead, set
-`FETCHCONTENT_SOURCE_DIR_SDL3=/path/to/SDL`.
+| Option | Default | Effect |
+|---|---|---|
+| `COOKBOOK_SDL_IMAGE`, `COOKBOOK_SDL_MIXER`, `COOKBOOK_SDL_TTF`, `COOKBOOK_SDL_NET` | `ON` | build that satellite library |
+| `COOKBOOK_<LIB>_GIT_TAG` | see [Libraries](#libraries) | tag or commit to build, e.g. `COOKBOOK_SDL_IMAGE_GIT_TAG` |
+| `COOKBOOK_<LIB>_SOURCE_DIR` | empty | build a local checkout instead of fetching, e.g. `COOKBOOK_SDL_SOURCE_DIR=/path/to/SDL` |
+| `COOKBOOK_TESTS` | `ON` | add the consumer tests |
 
-SDL's own options (`SDL_SHARED`, `SDL_STATIC`, `SDL_WAYLAND`, ...) can be
-passed the same way.
+`<LIB>` is `SDL`, `SDL_IMAGE`, `SDL_MIXER`, `SDL_TTF` or `SDL_NET`.
+
+The libraries' own options (`SDL_WAYLAND`, `SDLIMAGE_AVIF`, ...) are set in
+`CMAKE_CACHE_ARGS` of their recipe, since each library is a separate CMake
+project.
 
 ## License
 
 The recipes in this repository are licensed under the [MIT License](LICENSE).
-SDL itself is licensed under the zlib license.
+The SDL libraries are licensed under the zlib license. The libraries they
+vendor carry their own licenses. SDL_image and SDL_mixer install those into
+`share/licenses/`; SDL_ttf does not install the licenses of FreeType,
+HarfBuzz and PlutoSVG, which it links statically.
