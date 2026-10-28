@@ -17,6 +17,12 @@
 # SUBMODULES also fetches the git submodules (the vendored dependencies).
 # PROGRAMS marks a library that installs programs into bin/: they get
 # COOKBOOK_PROGRAM_RPATH on top of CMAKE_INSTALL_RPATH to find lib/.
+#
+# Each GIT_TAG (or SOURCE_DIR) is built in its own directory,
+# <build>/<name>/<ref>/, and never updated from the remote: an unchanged
+# library does no work on rebuilds, and a new GIT_TAG starts from a fresh
+# clone. Switching back to a previous GIT_TAG reuses its build and only
+# installs it again.
 
 include(ExternalProject)
 find_package(Git REQUIRED)
@@ -38,7 +44,11 @@ function(cookbook_add_library name)
 
   if(arg_SOURCE_DIR)
     set(source_args SOURCE_DIR "${arg_SOURCE_DIR}")
+    string(SHA1 path_hash "${arg_SOURCE_DIR}")
+    string(SUBSTRING "${path_hash}" 0 12 path_hash)
+    set(ref "local-${path_hash}")
   else()
+    string(REGEX REPLACE "[^A-Za-z0-9._-]" "_" ref "${arg_GIT_TAG}")
     # A shallow clone only works for branch and tag names, not commits.
     if(arg_GIT_TAG MATCHES "^[0-9a-fA-F]+$")
       set(shallow OFF)
@@ -86,11 +96,12 @@ function(cookbook_add_library name)
   endforeach()
 
   # Submodules, if any, come from the patch step above. To keep the console
-  # readable, each step logs to <build>/<name>/src/<name>-stamp/ and prints its
-  # log only on failure.
+  # readable, each step logs to <build>/<name>/<ref>/src/<name>-stamp/ and
+  # prints its log only on failure.
   externalproject_add(
     ${name} ${source_args}
-    PREFIX "${CMAKE_BINARY_DIR}/${name}"
+    PREFIX "${CMAKE_BINARY_DIR}/${name}/${ref}"
+    UPDATE_DISCONNECTED ON
     GIT_SUBMODULES ""
     DEPENDS ${arg_DEPENDS}
     LIST_SEPARATOR "|"
@@ -101,4 +112,10 @@ function(cookbook_add_library name)
     LOG_BUILD ON
     LOG_INSTALL ON
     LOG_OUTPUT_ON_FAILURE ON)
+
+  # Rewritten only when the ref changes, so switching back to a ref whose
+  # build is complete still installs it over the other one.
+  set(active_ref "${CMAKE_BINARY_DIR}/${name}/active-ref.txt")
+  file(CONFIGURE OUTPUT "${active_ref}" CONTENT "${ref}\n")
+  externalproject_add_stepdependencies(${name} install "${active_ref}")
 endfunction()

@@ -82,13 +82,20 @@ target_link_libraries(app PRIVATE SDL3_image::SDL3_image SDL3::SDL3)
 The top-level [`CMakeLists.txt`](CMakeLists.txt) is a superbuild: it compiles
 nothing itself. [`cmake/Cookbook.cmake`](cmake/Cookbook.cmake) adds each library
 with `ExternalProject` as its own top-level project, the way upstream builds
-it, with its own build tree in `build/<preset>/<library>/`. SDL is installed
-first, and each satellite library then finds it in the install directory with
-`find_package(SDL3)`. The libraries share nothing but that directory.
+it. SDL is installed first, and each satellite library then finds it in the
+install directory with `find_package(SDL3)`. The libraries share nothing but
+that directory.
+
+Each version of a library gets its own build tree in
+`build/<preset>/<library>/<tag>/`, and is never updated from the remote once
+cloned. Rebuilding without changes does no work, changing a `GIT_TAG` starts
+from a fresh clone, and switching back to a version that was built before only
+installs it again. To rebuild a version from scratch, for example a branch
+name used as `GIT_TAG` that has new commits, delete its directory.
 
 Each step writes its output to a log file in
-`build/<preset>/<library>/src/<library>-stamp/` and prints it only if the step
-fails.
+`build/<preset>/<library>/<tag>/src/<library>-stamp/` and prints it only if the
+step fails.
 
 ## Presets
 
