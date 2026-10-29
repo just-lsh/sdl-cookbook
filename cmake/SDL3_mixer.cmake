@@ -17,10 +17,5 @@ cookbook_add_library(
   CMAKE_CACHE_ARGS
     -DSDLMIXER_VENDORED:BOOL=ON
     # Fail instead of silently dropping a format whose codec is missing.
-    -DSDLMIXER_STRICT:BOOL=ON
-    -DSDLMIXER_TESTS:BOOL=OFF
-    -DSDLMIXER_EXAMPLES:BOOL=OFF
-    -DSDLMIXER_RELOCATABLE:BOOL=ON
-    # libgme's default YM2612 emulator (MAME) is GPLv2+; Nuked keeps libgme
-    # LGPL-2.1.
-    -DGME_YM2612_EMU:STRING=Nuked)
+    -DSDLMIXER_STRICT:BOOL=ON -DSDLMIXER_TESTS:BOOL=OFF -DSDLMIXER_EXAMPLES:BOOL=OFF
+    -DSDLMIXER_RELOCATABLE:BOOL=ON)

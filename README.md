@@ -29,8 +29,10 @@ that loads them.
 
 - CMake 3.25+
 - Ninja
+- Git
 - A C and C++ compiler
 - `nasm`, for the AV1 codecs of SDL_image
+- Python 3, for SPIRV-Tools and DirectXShaderCompiler of SDL_shadercross
 - SDL's [platform build dependencies](https://wiki.libsdl.org/SDL3/README-linux#build-dependencies)
 
 On NixOS, [`shell.nix`](shell.nix) provides all of these:
@@ -50,8 +52,8 @@ The workflow runs three steps, each also available as its own preset:
 1. `cmake --preset <name>` configures `build/<name>/`.
 2. `cmake --build --preset <name>` fetches, builds and installs every library
    into `out/<name>/`.
-3. `ctest --preset <name>` builds a small program per library from
-   [`tests/`](tests) against the install and runs it. The programs check that
+3. `ctest --preset <name>` builds a small program per library,
+   `tests/<library>/main.c`, against the install and runs it. The programs check that
    the codecs load, for example by encoding and decoding a PNG, JPEG, WebP and
    AVIF image with SDL_image, or compiling an HLSL shader with SDL_shadercross.
 
@@ -91,7 +93,9 @@ Each version of a library gets its own build tree in
 cloned. Rebuilding without changes does no work, changing a `GIT_TAG` starts
 from a fresh clone, and switching back to a version that was built before only
 installs it again. To rebuild a version from scratch, for example a branch
-name used as `GIT_TAG` that has new commits, delete its directory.
+name used as `GIT_TAG` that has new commits, delete its directory. A local
+checkout set with `COOKBOOK_<LIB>_SOURCE_DIR` is built on every build instead,
+so its own build system picks up your edits.
 
 Each step writes its output to a log file in
 `build/<preset>/<library>/<tag>/src/<library>-stamp/` and prints it only if the
@@ -114,7 +118,7 @@ combines small hidden presets from the other directories:
 |---|---|---|
 | `config/` | `config-layout`, `config-ninja`, `config-debug`, `config-release` | build and install directories, generator, build type |
 | `compiler/` | `compiler-gcc` | C and C++ compilers |
-| `host/` | `host-x64-linux` | the host where the preset is available |
+| `host/` | `host-x64-linux` | the host where the preset is available; configuring fails on another processor |
 
 The build type, compilers, toolchain file, library directory and RPATH are
 passed on to every library.
@@ -131,7 +135,7 @@ cmake --preset x64-linux-gcc-release -DCOOKBOOK_SDL_GIT_TAG=release-3.4.16 -DCOO
 |---|---|---|
 | `COOKBOOK_SDL_IMAGE`, `COOKBOOK_SDL_MIXER`, `COOKBOOK_SDL_TTF`, `COOKBOOK_SDL_NET`, `COOKBOOK_SDL_SHADERCROSS` | `ON` | build that satellite library |
 | `COOKBOOK_<LIB>_GIT_TAG` | see [Libraries](#libraries) | tag or commit to build, e.g. `COOKBOOK_SDL_IMAGE_GIT_TAG` |
-| `COOKBOOK_<LIB>_SOURCE_DIR` | empty | build a local checkout instead of fetching, e.g. `COOKBOOK_SDL_SOURCE_DIR=/path/to/SDL` |
+| `COOKBOOK_<LIB>_SOURCE_DIR` | empty | build a local checkout instead of fetching, e.g. `COOKBOOK_SDL_SOURCE_DIR=/path/to/SDL`; it must already have its git submodules |
 | `COOKBOOK_TESTS` | `ON` | add the consumer tests |
 
 `<LIB>` is `SDL`, `SDL_IMAGE`, `SDL_MIXER`, `SDL_TTF`, `SDL_NET` or

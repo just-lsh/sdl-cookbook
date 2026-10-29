@@ -14,15 +14,20 @@
 # find_package.
 #
 # SOURCE_DIR builds an existing checkout instead of cloning GIT_REPOSITORY.
-# SUBMODULES also fetches the git submodules (the vendored dependencies).
-# PROGRAMS marks a library that installs programs into bin/: they get
-# COOKBOOK_PROGRAM_RPATH on top of CMAKE_INSTALL_RPATH to find lib/.
+# SUBMODULES also fetches the git submodules (the vendored dependencies) of
+# the clone; a SOURCE_DIR checkout must already have them.
+# PROGRAMS marks a library that installs programs into bin/: the library is
+# built with COOKBOOK_PROGRAM_RPATH on top of CMAKE_INSTALL_RPATH, so its
+# programs find lib/.
 #
 # Each GIT_TAG (or SOURCE_DIR) is built in its own directory,
 # <build>/<name>/<ref>/, and never updated from the remote: an unchanged
 # library does no work on rebuilds, and a new GIT_TAG starts from a fresh
 # clone. Switching back to a previous GIT_TAG reuses its build and only
-# installs it again.
+# installs it again. A SOURCE_DIR checkout is built on every build instead,
+# and its own build system decides what changed.
+#
+# Each library is appended to the global property COOKBOOK_LIBRARIES.
 
 include(ExternalProject)
 find_package(Git REQUIRED)
@@ -43,12 +48,19 @@ function(cookbook_add_library name)
                         "DEPENDS;CMAKE_CACHE_ARGS")
 
   if(arg_SOURCE_DIR)
-    set(source_args SOURCE_DIR "${arg_SOURCE_DIR}")
+    set(source_args SOURCE_DIR "${arg_SOURCE_DIR}" BUILD_ALWAYS ON)
     string(SHA1 path_hash "${arg_SOURCE_DIR}")
     string(SUBSTRING "${path_hash}" 0 12 path_hash)
     set(ref "local-${path_hash}")
   else()
     string(REGEX REPLACE "[^A-Za-z0-9._-]" "_" ref "${arg_GIT_TAG}")
+    # Keeps refs apart that differ only in replaced characters, such as
+    # feature/foo and feature_foo.
+    if(NOT ref STREQUAL arg_GIT_TAG)
+      string(SHA1 tag_hash "${arg_GIT_TAG}")
+      string(SUBSTRING "${tag_hash}" 0 12 tag_hash)
+      string(APPEND ref "-${tag_hash}")
+    endif()
     # A shallow clone only works for branch and tag names, not commits.
     if(arg_GIT_TAG MATCHES "^[0-9a-fA-F]+$")
       set(shallow OFF)
@@ -118,4 +130,6 @@ function(cookbook_add_library name)
   set(active_ref "${CMAKE_BINARY_DIR}/${name}/active-ref.txt")
   file(CONFIGURE OUTPUT "${active_ref}" CONTENT "${ref}\n")
   externalproject_add_stepdependencies(${name} install "${active_ref}")
+
+  set_property(GLOBAL APPEND PROPERTY COOKBOOK_LIBRARIES ${name})
 endfunction()

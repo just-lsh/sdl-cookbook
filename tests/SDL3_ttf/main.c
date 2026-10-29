@@ -20,11 +20,13 @@ int main(void)
     int major, minor, patch;
     TTF_GetFreeTypeVersion(&major, &minor, &patch);
     SDL_Log("FreeType %d.%d.%d", major, minor, patch);
+    const bool freetype = major > 0;
     TTF_GetHarfBuzzVersion(&major, &minor, &patch);
     SDL_Log("HarfBuzz %d.%d.%d", major, minor, patch);
+    const bool harfbuzz = major > 0;
 
     TTF_Quit();
 
-    /* Without HarfBuzz, SDL_ttf reports version 0.0.0. */
-    return major > 0 ? 0 : 1;
+    /* SDL_ttf reports version 0.0.0 for a library it was built without. */
+    return freetype && harfbuzz ? 0 : 1;
 }

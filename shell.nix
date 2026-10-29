@@ -8,11 +8,14 @@
 pkgs.mkShell {
   nativeBuildInputs = with pkgs; [
     cmake
+    git
     ninja
     pkg-config
     wayland-scanner
     # Assembly in SDL_image's vendored dav1d and aom.
     nasm
+    # SPIRV-Tools and DirectXShaderCompiler, vendored by SDL_shadercross.
+    python3
   ];
 
   buildInputs = with pkgs; [

@@ -14,10 +14,20 @@ option(COOKBOOK_SDL_NET "Build SDL_net" ON)
 option(COOKBOOK_SDL_SHADERCROSS "Build SDL_shadercross" ON)
 option(COOKBOOK_TESTS "Test the installed libraries with consumer projects" ON)
 
+# Presets can only check the host system name, so the host presets also set
+# the processor they are for.
+if(COOKBOOK_HOST_PROCESSOR AND NOT CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL COOKBOOK_HOST_PROCESSOR)
+  message(
+    FATAL_ERROR
+      "This preset is for ${COOKBOOK_HOST_PROCESSOR} hosts, "
+      "but this host is ${CMAKE_HOST_SYSTEM_PROCESSOR}.")
+endif()
+
 # Installed libraries find each other in their own directory, so the install
 # prefix can be moved. This also covers the codecs that SDL loads at runtime.
 # Libraries that install programs into bin/ (cookbook_add_library(PROGRAMS))
-# additionally get COOKBOOK_PROGRAM_RPATH, the library directory next to bin/.
+# are additionally built with COOKBOOK_PROGRAM_RPATH, the library directory
+# next to bin/.
 if(DEFINED CMAKE_INSTALL_LIBDIR)
   set(_libdir "${CMAKE_INSTALL_LIBDIR}")
 else()

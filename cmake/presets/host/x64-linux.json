@@ -8,6 +8,9 @@
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "COOKBOOK_HOST_PROCESSOR": "x86_64"
       }
     }
   ]
