@@ -1,9 +1,10 @@
 # sdl-cookbook
 
 CMake recipes for building [SDL3](https://libsdl.org) and its satellite
-libraries from source. You pick a preset, and CMake fetches the libraries,
-builds them, installs them together into `out/<preset>/` and checks that the
-install is usable.
+libraries from source. A recipe chooses the libraries, their versions and
+their options. You pick a preset for a recipe, and CMake fetches the
+libraries, builds them, installs them together into `out/<preset>/` and checks
+that the install is usable.
 
 > [!NOTE]
 > This project is not affiliated with or endorsed by the SDL project. Please
@@ -11,7 +12,7 @@ install is usable.
 
 ## Libraries
 
-| Library | Default version | Recipe |
+| Library | Version in the recipes | Definition |
 |---|---|---|
 | [SDL](https://github.com/libsdl-org/SDL) | `release-3.4.18` | [`cmake/SDL3.cmake`](cmake/SDL3.cmake) |
 | [SDL_image](https://github.com/libsdl-org/SDL_image) | `release-3.4.8` | [`cmake/SDL3_image.cmake`](cmake/SDL3_image.cmake) |
@@ -44,7 +45,7 @@ nix-shell
 ## Usage
 
 ```sh
-cmake --workflow --preset x64-linux-gcc-release
+cmake --workflow --preset desktop-x64-linux-gcc
 ```
 
 The workflow runs three steps, each also available as its own preset:
@@ -60,9 +61,9 @@ The workflow runs three steps, each also available as its own preset:
 The result has one directory per preset:
 
 ```text
-out/x64-linux-gcc-release/
-├── bin/       # shadercross
-├── include/   # SDL3/, SDL3_image/, SDL3_mixer/, SDL3_ttf/, SDL3_net/, SDL3_shadercross/
+out/desktop-x64-linux-gcc/
+├── bin/       # shadercross, with the desktop-shadercross recipe
+├── include/   # SDL3/, SDL3_image/, SDL3_mixer/, SDL3_ttf/, SDL3_net/, ...
 ├── lib/       # libSDL3.so, libSDL3_image.so, ..., and the codec libraries
 │   ├── cmake/
 │   └── pkgconfig/
@@ -88,27 +89,76 @@ it. SDL is installed first, and each satellite library then finds it in the
 install directory with `find_package(SDL3)`. The libraries share nothing but
 that directory.
 
+Each library has a definition, `cmake/<library>.cmake`, with what every
+build of it needs: where to fetch it, what it depends on, and the options that
+keep the install small and relocatable (no tests or samples). Everything else
+comes from the recipe.
+
 Each version of a library gets its own build tree in
 `build/<preset>/<library>/<tag>/`, and is never updated from the remote once
 cloned. Rebuilding without changes does no work, changing a `GIT_TAG` starts
 from a fresh clone, and switching back to a version that was built before only
 installs it again. To rebuild a version from scratch, for example a branch
 name used as `GIT_TAG` that has new commits, delete its directory. A local
-checkout set with `COOKBOOK_<LIB>_SOURCE_DIR` is built on every build instead,
+checkout set with `COOKBOOK_<LIBRARY>_SOURCE_DIR` is built on every build instead,
 so its own build system picks up your edits.
 
 Each step writes its output to a log file in
 `build/<preset>/<library>/<tag>/src/<library>-stamp/` and prints it only if the
 step fails.
 
+## Recipes
+
+| Recipe | Libraries | Platforms |
+|---|---|---|
+| `desktop` | all of the above except SDL_shadercross, with their codecs and dependencies built from the vendored sources | Linux |
+| `desktop-shadercross` | `desktop` plus SDL_shadercross | Linux |
+
+A recipe is a set of hidden presets in
+[`cmake/presets/recipe/`](cmake/presets/recipe): `recipe-<name>` sets what is
+the same on every platform, and `recipe-<name>-<platform>` the rest. A recipe
+can build on another one: `recipe-desktop-shadercross` inherits
+`recipe-desktop` and uses its Linux part. They set cache variables:
+
+| Variable | Effect |
+|---|---|
+| `COOKBOOK_<LIBRARY>` | build that library; all are `OFF` unless a recipe turns them on |
+| `COOKBOOK_<LIBRARY>_GIT_TAG` | tag or commit to build |
+| `COOKBOOK_<LIBRARY>_SOURCE_DIR` | build a local checkout instead of fetching, e.g. `COOKBOOK_SDL3_SOURCE_DIR=/path/to/SDL`; it must already have its git submodules |
+| the library's own options | passed on to the library, by prefix: `SDL_*` to SDL, `SDLIMAGE_*` to SDL_image, `SDLMIXER_*`, `SDLTTF_*`, `SDLNET_*`, `SDLSHADERCROSS_*` |
+| `COOKBOOK_SDL3_REQUIRE` | defines that SDL's generated `SDL_build_config.h` must contain, such as `SDL_VIDEO_DRIVER_WAYLAND_DYNAMIC`; the build fails if one is missing |
+| `COOKBOOK_TESTS` | add the consumer tests; `ON` by default |
+
+`<LIBRARY>` is the library name in upper case: `SDL3`, `SDL3_IMAGE`,
+`SDL3_MIXER`, `SDL3_TTF`, `SDL3_NET` or `SDL3_SHADERCROSS`. Turning on a
+library without the libraries it needs fails, as does a library without a
+version.
+
+SDL compiles in a backend only if it finds its development headers, and
+silently leaves it out otherwise. The `desktop` recipe lists every Linux
+backend it wants in `COOKBOOK_SDL3_REQUIRE`, all loaded at runtime (`_DYNAMIC`)
+so the build runs on systems that lack some of them. If the build stops
+there, install the missing development packages. SDL_image, SDL_mixer and
+SDL_ttf fail on a missing codec by themselves, with their `STRICT` options.
+
+SDL_shadercross has its own recipe because most games only need it while
+they are developed: it compiles shaders, usually ahead of time. It builds
+DirectXShaderCompiler, a fork of LLVM, which takes longer than any other
+library and makes up most of the install size (its library is about 40 MB of
+the 94 MB `desktop-shadercross` install).
+
 ## Presets
 
-Preset names follow `<host>-<compiler>-<build type>`.
+The project has presets for the builds it publishes, named
+`<recipe>-<host>-<compiler>`. They build everything as `Release`, and add
+debug information to the SDL libraries' own code only, the way SDL ships its
+Windows builds. A debugger can step into SDL, while the vendored dependencies
+stay small. [`cmake/DebugInfo.cmake`](cmake/DebugInfo.cmake) does this.
 
-| Preset | Host | Compiler | Generator |
-|---|---|---|---|
-| `x64-linux-gcc-debug` | Linux x86_64 | GCC | Ninja |
-| `x64-linux-gcc-release` | Linux x86_64 | GCC | Ninja |
+| Preset | Recipe | Host | Compiler | Generator |
+|---|---|---|---|---|
+| `desktop-x64-linux-gcc` | `desktop` | Linux x86_64 | GCC | Ninja |
+| `desktop-shadercross-x64-linux-gcc` | `desktop-shadercross` | Linux x86_64 | GCC | Ninja |
 
 [`CMakePresets.json`](CMakePresets.json) only includes the files in
 [`cmake/presets/platform/`](cmake/presets/platform). Each platform file
@@ -116,39 +166,59 @@ combines small hidden presets from the other directories:
 
 | Directory | Hidden presets | Sets |
 |---|---|---|
-| `config/` | `config-layout`, `config-ninja`, `config-debug`, `config-release` | build and install directories, generator, build type |
+| `recipe/` | `recipe-desktop`, `recipe-desktop-linux`, `recipe-desktop-shadercross` | libraries, versions and options |
+| `config/` | `config-layout`, `config-ninja`, `config-release` | build and install directories, generator, build type |
 | `compiler/` | `compiler-gcc` | C and C++ compilers |
 | `host/` | `host-x64-linux` | the host where the preset is available; configuring fails on another processor |
 
 The build type, compilers, toolchain file, library directory and RPATH are
 passed on to every library.
 
-## Options
+### Your own build
 
-Set these when configuring, for example:
+To change a recipe, write your own preset in `CMakeUserPresets.json`, which
+git ignores. It inherits a project preset and overrides single cache
+variables; all others keep the recipe's values. Start from
+[`CMakeUserPresets.example.json`](CMakeUserPresets.example.json):
 
 ```sh
-cmake --preset x64-linux-gcc-release -DCOOKBOOK_SDL_GIT_TAG=release-3.4.16 -DCOOKBOOK_SDL_NET=OFF
+cp CMakeUserPresets.example.json CMakeUserPresets.json
+cmake --workflow --preset my-game
 ```
 
-| Option | Default | Effect |
-|---|---|---|
-| `COOKBOOK_SDL_IMAGE`, `COOKBOOK_SDL_MIXER`, `COOKBOOK_SDL_TTF`, `COOKBOOK_SDL_NET`, `COOKBOOK_SDL_SHADERCROSS` | `ON` | build that satellite library |
-| `COOKBOOK_<LIB>_GIT_TAG` | see [Libraries](#libraries) | tag or commit to build, e.g. `COOKBOOK_SDL_IMAGE_GIT_TAG` |
-| `COOKBOOK_<LIB>_SOURCE_DIR` | empty | build a local checkout instead of fetching, e.g. `COOKBOOK_SDL_SOURCE_DIR=/path/to/SDL`; it must already have its git submodules |
-| `COOKBOOK_TESTS` | `ON` | add the consumer tests |
+Its `my-game` preset builds the `desktop` recipe with an older SDL, without
+SDL_net, and with JPEG XL support in SDL_image:
 
-`<LIB>` is `SDL`, `SDL_IMAGE`, `SDL_MIXER`, `SDL_TTF`, `SDL_NET` or
-`SDL_SHADERCROSS`.
+```json
+{
+  "name": "my-game",
+  "inherits": "desktop-x64-linux-gcc",
+  "cacheVariables": {
+    "COOKBOOK_SDL3_GIT_TAG": "release-3.4.16",
+    "COOKBOOK_SDL3_NET": false,
+    "SDLIMAGE_JXL": true
+  }
+}
+```
 
-SDL_shadercross builds DirectXShaderCompiler, a fork of LLVM, which takes
-longer than all other libraries together and makes up most of the install
-size (about 1.2 GB for a debug build, 75 MB for release). Turn it off with
-`-DCOOKBOOK_SDL_SHADERCROSS=OFF` if you don't need it.
+The build, test and workflow presets in the example only repeat the name: a
+workflow preset needs them to run all three steps with one command. Each
+preset builds into `build/<preset>/` and installs into `out/<preset>/`, so
+your builds never mix with the project's.
 
-The libraries' own options (`SDL_WAYLAND`, `SDLIMAGE_AVIF`, ...) are set in
-`CMAKE_CACHE_ARGS` of their recipe, since each library is a separate CMake
-project.
+A variable keeps its value in an existing build directory after you remove it
+from a preset. Configure with `--fresh` to start from the preset's values
+again:
+
+```sh
+cmake --preset my-game --fresh
+```
+
+For a one-off change, `-D` on the command line overrides the preset:
+
+```sh
+cmake --preset desktop-x64-linux-gcc -DCOOKBOOK_SDL3_GIT_TAG=release-3.4.16
+```
 
 ## Formatting
 

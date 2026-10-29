@@ -13,5 +13,6 @@ flags = ["SUBMODULES", "PROGRAMS"]
 GIT_REPOSITORY = { nargs = 1 }
 GIT_TAG = { nargs = 1 }
 SOURCE_DIR = { nargs = 1 }
+OPTION_PREFIX = { nargs = 1 }
 DEPENDS = { nargs = "+" }
 CMAKE_CACHE_ARGS = { nargs = "+" }

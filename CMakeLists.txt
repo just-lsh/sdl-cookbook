@@ -7,11 +7,14 @@ project(sdl-cookbook LANGUAGES NONE)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-option(COOKBOOK_SDL_IMAGE "Build SDL_image" ON)
-option(COOKBOOK_SDL_MIXER "Build SDL_mixer" ON)
-option(COOKBOOK_SDL_TTF "Build SDL_ttf" ON)
-option(COOKBOOK_SDL_NET "Build SDL_net" ON)
-option(COOKBOOK_SDL_SHADERCROSS "Build SDL_shadercross" ON)
+# Nothing is built by default: a recipe preset (cmake/presets/recipe/) turns
+# on the libraries it wants and sets their versions and options.
+option(COOKBOOK_SDL3 "Build SDL" OFF)
+option(COOKBOOK_SDL3_IMAGE "Build SDL_image" OFF)
+option(COOKBOOK_SDL3_MIXER "Build SDL_mixer" OFF)
+option(COOKBOOK_SDL3_TTF "Build SDL_ttf" OFF)
+option(COOKBOOK_SDL3_NET "Build SDL_net" OFF)
+option(COOKBOOK_SDL3_SHADERCROSS "Build SDL_shadercross" OFF)
 option(COOKBOOK_TESTS "Test the installed libraries with consumer projects" ON)
 
 # Presets can only check the host system name, so the host presets also set
@@ -43,21 +46,21 @@ endif()
 
 include(Cookbook)
 
+# In dependency order: a library finds its dependencies in the install prefix.
+# Each one checks its own COOKBOOK_<LIBRARY> switch.
 include(SDL3)
-if(COOKBOOK_SDL_IMAGE)
-  include(SDL3_image)
-endif()
-if(COOKBOOK_SDL_MIXER)
-  include(SDL3_mixer)
-endif()
-if(COOKBOOK_SDL_TTF)
-  include(SDL3_ttf)
-endif()
-if(COOKBOOK_SDL_NET)
-  include(SDL3_net)
-endif()
-if(COOKBOOK_SDL_SHADERCROSS)
-  include(SDL3_shadercross)
+include(SDL3_image)
+include(SDL3_mixer)
+include(SDL3_ttf)
+include(SDL3_net)
+include(SDL3_shadercross)
+
+get_property(_libraries GLOBAL PROPERTY COOKBOOK_LIBRARIES)
+if(NOT _libraries)
+  message(
+    FATAL_ERROR
+      "No library is turned on. Configure with a preset (cmake --list-presets), "
+      "or set COOKBOOK_SDL3=ON and the version of each library.")
 endif()
 
 if(COOKBOOK_TESTS)

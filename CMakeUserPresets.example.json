@@ -1,0 +1,48 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "my-game",
+      "inherits": "desktop-x64-linux-gcc",
+      "cacheVariables": {
+        "COOKBOOK_SDL3_GIT_TAG": "release-3.4.16",
+        "COOKBOOK_SDL3_NET": false,
+        "SDLIMAGE_JXL": true
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "my-game",
+      "configurePreset": "my-game"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "my-game",
+      "configurePreset": "my-game",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "my-game",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "my-game"
+        },
+        {
+          "type": "build",
+          "name": "my-game"
+        },
+        {
+          "type": "test",
+          "name": "my-game"
+        }
+      ]
+    }
+  ]
+}

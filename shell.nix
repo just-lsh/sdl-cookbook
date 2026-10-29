@@ -1,8 +1,8 @@
 # Build environment for the x64-linux presets on a NixOS host.
-# The library list follows nixpkgs' sdl3 package, so SDL enables the same
-# video and audio backends as the distribution build. The satellite
-# libraries build their codecs from vendored sources and need no libraries
-# from here.
+# It provides every SDL backend that the desktop recipe requires on Linux
+# (COOKBOOK_SDL3_REQUIRE in cmake/presets/recipe/desktop.json), which are the
+# ones the Steam Runtime SDK has headers for. The satellite libraries build
+# their codecs from vendored sources and need no libraries from here.
 { pkgs ? import <nixpkgs> { } }:
 
 pkgs.mkShell {
@@ -43,6 +43,10 @@ pkgs.mkShell {
     libGL
     vulkan-headers
     vulkan-loader
+
+    # Text shaping for bidirectional and Thai text
+    fribidi
+    libthai
 
     # System integration
     dbus

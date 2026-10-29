@@ -1,27 +1,32 @@
 {
   "version": 6,
   "include": [
+    "../recipe/desktop.json",
+    "../recipe/desktop-shadercross.json",
     "../config/layout.json",
     "../config/ninja.json",
-    "../config/debug.json",
     "../config/release.json",
     "../compiler/gcc.json",
     "../host/x64-linux.json"
   ],
   "configurePresets": [
     {
-      "name": "x64-linux-gcc-debug",
+      "name": "desktop-x64-linux-gcc",
       "inherits": [
+        "recipe-desktop-linux",
+        "recipe-desktop",
         "config-layout",
         "config-ninja",
-        "config-debug",
+        "config-release",
         "compiler-gcc",
         "host-x64-linux"
       ]
     },
     {
-      "name": "x64-linux-gcc-release",
+      "name": "desktop-shadercross-x64-linux-gcc",
       "inherits": [
+        "recipe-desktop-linux",
+        "recipe-desktop-shadercross",
         "config-layout",
         "config-ninja",
         "config-release",
@@ -32,25 +37,25 @@
   ],
   "buildPresets": [
     {
-      "name": "x64-linux-gcc-debug",
-      "configurePreset": "x64-linux-gcc-debug"
+      "name": "desktop-x64-linux-gcc",
+      "configurePreset": "desktop-x64-linux-gcc"
     },
     {
-      "name": "x64-linux-gcc-release",
-      "configurePreset": "x64-linux-gcc-release"
+      "name": "desktop-shadercross-x64-linux-gcc",
+      "configurePreset": "desktop-shadercross-x64-linux-gcc"
     }
   ],
   "testPresets": [
     {
-      "name": "x64-linux-gcc-debug",
-      "configurePreset": "x64-linux-gcc-debug",
+      "name": "desktop-x64-linux-gcc",
+      "configurePreset": "desktop-x64-linux-gcc",
       "output": {
         "outputOnFailure": true
       }
     },
     {
-      "name": "x64-linux-gcc-release",
-      "configurePreset": "x64-linux-gcc-release",
+      "name": "desktop-shadercross-x64-linux-gcc",
+      "configurePreset": "desktop-shadercross-x64-linux-gcc",
       "output": {
         "outputOnFailure": true
       }
@@ -58,36 +63,36 @@
   ],
   "workflowPresets": [
     {
-      "name": "x64-linux-gcc-debug",
+      "name": "desktop-x64-linux-gcc",
       "steps": [
         {
           "type": "configure",
-          "name": "x64-linux-gcc-debug"
+          "name": "desktop-x64-linux-gcc"
         },
         {
           "type": "build",
-          "name": "x64-linux-gcc-debug"
+          "name": "desktop-x64-linux-gcc"
         },
         {
           "type": "test",
-          "name": "x64-linux-gcc-debug"
+          "name": "desktop-x64-linux-gcc"
         }
       ]
     },
     {
-      "name": "x64-linux-gcc-release",
+      "name": "desktop-shadercross-x64-linux-gcc",
       "steps": [
         {
           "type": "configure",
-          "name": "x64-linux-gcc-release"
+          "name": "desktop-shadercross-x64-linux-gcc"
         },
         {
           "type": "build",
-          "name": "x64-linux-gcc-release"
+          "name": "desktop-shadercross-x64-linux-gcc"
         },
         {
           "type": "test",
-          "name": "x64-linux-gcc-release"
+          "name": "desktop-shadercross-x64-linux-gcc"
         }
       ]
     }

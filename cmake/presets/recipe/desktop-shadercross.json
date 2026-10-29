@@ -1,0 +1,19 @@
+{
+  "version": 6,
+  "include": [
+    "desktop.json"
+  ],
+  "configurePresets": [
+    {
+      "name": "recipe-desktop-shadercross",
+      "hidden": true,
+      "description": "recipe-desktop plus SDL_shadercross, with SPIRV-Cross and DirectXShaderCompiler built from the vendored sources",
+      "inherits": "recipe-desktop",
+      "cacheVariables": {
+        "COOKBOOK_SDL3_SHADERCROSS": true,
+        "COOKBOOK_SDL3_SHADERCROSS_GIT_TAG": "1ff05bec573988a98ef9e0260b4da44f512b8367",
+        "SDLSHADERCROSS_VENDORED": true
+      }
+    }
+  ]
+}

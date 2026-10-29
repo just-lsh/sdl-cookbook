@@ -1,0 +1,40 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "recipe-desktop",
+      "hidden": true,
+      "description": "SDL3 and its satellite libraries except SDL_shadercross, with every codec built from the vendored sources",
+      "cacheVariables": {
+        "COOKBOOK_SDL3": true,
+        "COOKBOOK_SDL3_GIT_TAG": "release-3.4.18",
+
+        "COOKBOOK_SDL3_IMAGE": true,
+        "COOKBOOK_SDL3_IMAGE_GIT_TAG": "release-3.4.8",
+        "SDLIMAGE_VENDORED": true,
+        "SDLIMAGE_STRICT": true,
+
+        "COOKBOOK_SDL3_MIXER": true,
+        "COOKBOOK_SDL3_MIXER_GIT_TAG": "release-3.2.4",
+        "SDLMIXER_VENDORED": true,
+        "SDLMIXER_STRICT": true,
+
+        "COOKBOOK_SDL3_TTF": true,
+        "COOKBOOK_SDL3_TTF_GIT_TAG": "release-3.2.2",
+        "SDLTTF_VENDORED": true,
+        "SDLTTF_STRICT": true,
+
+        "COOKBOOK_SDL3_NET": true,
+        "COOKBOOK_SDL3_NET_GIT_TAG": "release-3.2.0"
+      }
+    },
+    {
+      "name": "recipe-desktop-linux",
+      "hidden": true,
+      "description": "Linux part of recipe-desktop: every backend the Steam Runtime SDK has headers for, all loaded at runtime",
+      "cacheVariables": {
+        "COOKBOOK_SDL3_REQUIRE": "SDL_VIDEO_DRIVER_X11_DYNAMIC;SDL_VIDEO_DRIVER_X11_DYNAMIC_XCURSOR;SDL_VIDEO_DRIVER_X11_DYNAMIC_XEXT;SDL_VIDEO_DRIVER_X11_DYNAMIC_XFIXES;SDL_VIDEO_DRIVER_X11_DYNAMIC_XINPUT2;SDL_VIDEO_DRIVER_X11_DYNAMIC_XRANDR;SDL_VIDEO_DRIVER_X11_DYNAMIC_XSS;SDL_VIDEO_DRIVER_X11_DYNAMIC_XTEST;SDL_VIDEO_DRIVER_WAYLAND_DYNAMIC;SDL_VIDEO_DRIVER_WAYLAND_DYNAMIC_LIBDECOR;SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC;SDL_VIDEO_VULKAN;SDL_GPU_VULKAN;SDL_AUDIO_DRIVER_PIPEWIRE_DYNAMIC;SDL_AUDIO_DRIVER_PULSEAUDIO_DYNAMIC;SDL_AUDIO_DRIVER_ALSA_DYNAMIC;SDL_AUDIO_DRIVER_JACK_DYNAMIC;SDL_CAMERA_DRIVER_V4L2;SDL_CAMERA_DRIVER_PIPEWIRE_DYNAMIC;SDL_FRIBIDI_DYNAMIC;SDL_LIBTHAI_DYNAMIC;SDL_UDEV_DYNAMIC;SDL_LIBUSB_DYNAMIC;HAVE_DBUS_DBUS_H;HAVE_IBUS_IBUS_H"
+      }
+    }
+  ]
+}
