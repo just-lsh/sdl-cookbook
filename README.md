@@ -159,6 +159,8 @@ stay small. [`cmake/DebugInfo.cmake`](cmake/DebugInfo.cmake) does this.
 |---|---|---|---|---|
 | `desktop-x64-linux-gcc` | `desktop` | Linux x86_64 | GCC | Ninja |
 | `desktop-shadercross-x64-linux-gcc` | `desktop-shadercross` | Linux x86_64 | GCC | Ninja |
+| `desktop-arm64-linux-gcc` | `desktop` | Linux arm64 | GCC | Ninja |
+| `desktop-shadercross-arm64-linux-gcc` | `desktop-shadercross` | Linux arm64 | GCC | Ninja |
 
 [`CMakePresets.json`](CMakePresets.json) only includes the files in
 [`cmake/presets/platform/`](cmake/presets/platform). Each platform file
@@ -169,7 +171,7 @@ combines small hidden presets from the other directories:
 | `recipe/` | `recipe-desktop`, `recipe-desktop-linux`, `recipe-desktop-shadercross` | libraries, versions and options |
 | `config/` | `config-layout`, `config-ninja`, `config-release` | build and install directories, generator, build type |
 | `compiler/` | `compiler-gcc` | C and C++ compilers |
-| `host/` | `host-x64-linux` | the host where the preset is available; configuring fails on another processor |
+| `host/` | `host-x64-linux`, `host-arm64-linux` | the host where the preset is available; configuring fails on another processor |
 
 The build type, compilers, toolchain file, library directory and RPATH are
 passed on to every library.

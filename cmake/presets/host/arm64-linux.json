@@ -1,0 +1,17 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "host-arm64-linux",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "COOKBOOK_HOST_PROCESSOR": "aarch64"
+      }
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-# Build environment for the x64-linux presets on a NixOS host.
+# Build environment for the Linux presets on a NixOS host.
 # It provides every SDL backend that the desktop recipe requires on Linux
 # (COOKBOOK_SDL3_REQUIRE in cmake/presets/recipe/desktop.json), which are the
 # ones the Steam Runtime SDK has headers for. The satellite libraries build

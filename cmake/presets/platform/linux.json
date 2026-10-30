@@ -7,7 +7,8 @@
     "../config/ninja.json",
     "../config/release.json",
     "../compiler/gcc.json",
-    "../host/x64-linux.json"
+    "../host/x64-linux.json",
+    "../host/arm64-linux.json"
   ],
   "configurePresets": [
     {
@@ -33,6 +34,30 @@
         "compiler-gcc",
         "host-x64-linux"
       ]
+    },
+    {
+      "name": "desktop-arm64-linux-gcc",
+      "inherits": [
+        "recipe-desktop-linux",
+        "recipe-desktop",
+        "config-layout",
+        "config-ninja",
+        "config-release",
+        "compiler-gcc",
+        "host-arm64-linux"
+      ]
+    },
+    {
+      "name": "desktop-shadercross-arm64-linux-gcc",
+      "inherits": [
+        "recipe-desktop-linux",
+        "recipe-desktop-shadercross",
+        "config-layout",
+        "config-ninja",
+        "config-release",
+        "compiler-gcc",
+        "host-arm64-linux"
+      ]
     }
   ],
   "buildPresets": [
@@ -43,6 +68,14 @@
     {
       "name": "desktop-shadercross-x64-linux-gcc",
       "configurePreset": "desktop-shadercross-x64-linux-gcc"
+    },
+    {
+      "name": "desktop-arm64-linux-gcc",
+      "configurePreset": "desktop-arm64-linux-gcc"
+    },
+    {
+      "name": "desktop-shadercross-arm64-linux-gcc",
+      "configurePreset": "desktop-shadercross-arm64-linux-gcc"
     }
   ],
   "testPresets": [
@@ -56,6 +89,20 @@
     {
       "name": "desktop-shadercross-x64-linux-gcc",
       "configurePreset": "desktop-shadercross-x64-linux-gcc",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "desktop-arm64-linux-gcc",
+      "configurePreset": "desktop-arm64-linux-gcc",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "desktop-shadercross-arm64-linux-gcc",
+      "configurePreset": "desktop-shadercross-arm64-linux-gcc",
       "output": {
         "outputOnFailure": true
       }
@@ -93,6 +140,40 @@
         {
           "type": "test",
           "name": "desktop-shadercross-x64-linux-gcc"
+        }
+      ]
+    },
+    {
+      "name": "desktop-arm64-linux-gcc",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "desktop-arm64-linux-gcc"
+        },
+        {
+          "type": "build",
+          "name": "desktop-arm64-linux-gcc"
+        },
+        {
+          "type": "test",
+          "name": "desktop-arm64-linux-gcc"
+        }
+      ]
+    },
+    {
+      "name": "desktop-shadercross-arm64-linux-gcc",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "desktop-shadercross-arm64-linux-gcc"
+        },
+        {
+          "type": "build",
+          "name": "desktop-shadercross-arm64-linux-gcc"
+        },
+        {
+          "type": "test",
+          "name": "desktop-shadercross-arm64-linux-gcc"
         }
       ]
     }
